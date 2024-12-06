@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Room</title>
+    <script src="http://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .chat-bubble {
+            display: inline-block;
+            padding: 10px 15px;
+            border-radius: 15px;
+            margin: 5px;
+            max-width: 70%;
+            word-wrap: break-word;
+            position: relative;
+        }
+
+        .my-message {
+            background-color: #007AFF; /* Blue */
+            color: white;
+            margin-left: auto;
+            margin-right: 0;
+        }
+
+        .their-message {
+            background-color: #E5E5EA; /* Light gray */
+            color: black;
+        }
+
+        .message-container {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .username {
+            font-weight: bold;
+            color: #333; /* Dark gray */
+        }
+
+        #in {
+            border-radius: 20px;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-900 text-white font-mono h-screen flex flex-col justify-between">
+<div class="max-w-lg mx-auto p-4 overflow-auto h-full">
+    <div id="out" class="space-y-2 mb-4"></div>
+</div>
+<div class="p-4">
+    <input id="in" placeholder="回车发送" class="w-full p-2 bg-gray-800 border border-gray-700 rounded">
+</div>
+
+<script>
+    let lastMessageTime = null;
+    const defaultAvatar = "https://api.7trees.cn/avatar"; // 默认头像的路径
+
+    function sse() {
+        var source = new EventSource('/stream');
+        var out = document.getElementById('out');
+        source.onmessage = function (e) {
+            if (e.data == 1) {
+                return;
+            }
+            addMessage(e.data); // 直接传递完整消息（包括用户名）
+        };
+    }
+
+    function addMessage(message) {
+        var out = document.getElementById('out');
+        let currentTime = new Date();
+
+        // 当前时间是否与上条消息间隔超过1分钟
+        if (lastMessageTime && (currentTime - lastMessageTime) > 60000) {
+            var timeSeparator = `<div class="text-center text-gray-500 my-2">--- ${formatDate(currentTime)} ---</div>`;
+            out.innerHTML += timeSeparator; // 将分隔时间插入到容器底部
+        }
+
+        function indexOfThirdColon(message) {
+            let index = -1;
+            for (let i = 0; i < 3; i++) {
+                index = message.indexOf(':', index + 1);
+                if (index === -1) {
+                    return -1; // 如果未找到第三个冒号，则返回 -1
+                }
+            }
+            return index; // 返回第三个冒号的位置
+        }
+
+        const thirdColonIndex = indexOfThirdColon(message);
+
+        // 从消息中提取用户名和内容
+        const indexOfColon = thirdColonIndex;
+        if (indexOfColon >= 0) {
+            const username = message.substring(11, indexOfColon).trim(); // 提取用户名
+            const userMessage = message.substring(indexOfColon + 1).trim(); // 提取消息内容
+
+            let messageHTML = '';
+
+            if (username === '{{ user }}') { // 如果用户名是自己
+                messageHTML = `
+                    <div class="message-container">
+                        <img src="${defaultAvatar}?${username}" alt="Avatar" class="avatar">
+                        <div>
+                        <div class="username">${username}（我）</div>
+                        <div class="chat-bubble my-message">${userMessage}</div>
+                        </div>
+                    </div>`;
+            } else {
+                messageHTML = `
+                    <div class="message-container">
+                        <img src="${defaultAvatar}?${username}" alt="Avatar" class="avatar">
+                        <div>
+                            <div class="username">${username}</div>
+                            <div class="chat-bubble their-message">${userMessage}</div>
+                        </div>
+                    </div>`;
+            }
+
+            out.innerHTML += messageHTML; // 将新消息插入到底部
+            lastMessageTime = currentTime;  // 更新最后消息时间
+        }
+    }
+
+    function formatDate(date) {
+        return `${date.getHours()}:${date.getMinutes() < 10 ? '0' : ''}${date.getMinutes()}`;
+    }
+
+    $('#in').keyup(function (e) {
+        if (e.keyCode == 13) {
+            var message = $(this).val();
+            if (message) {
+                $.post('/send', {'message': message});
+                addMessage(message);
+                $(this).val('');
+            }
+        }
+    });
+
+    sse();
+</script>
+</body>
+
+</html>
