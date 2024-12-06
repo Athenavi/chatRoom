@@ -3,76 +3,153 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Room</title>
     <script src="http://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
+        body {
+            scrollbar-width: thin; /* Firefox */
+            scrollbar-color: #4B5563 transparent; /* Firefox */
+        }
+
+        /* Webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px; /* 滚动条宽度 */
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: #4B5563; /* 滚动条颜色 */
+            border-radius: 10px; /* 圆角 */
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent; /* 滚动条背景 */
+        }
+
+        .chat-container {
+            max-width: 600px; /* 固定聊天区域宽度 */
+            width: 100%; /* 确保其在小屏幕上自适应 */
+            margin: 0 auto; /* 居中对齐 */
+        }
+
+        .scrollable {
+            max-height: 85vh; /* 限制聊天区域高度，以适应不同屏幕 */
+            overflow-y: auto; /* 允许垂直滚动 */
+            border: 1px solid #4B5563; /* 添加边框 */
+            border-radius: 8px; /* 圆角 */
+        }
+
         .chat-bubble {
             display: inline-block;
             padding: 10px 15px;
             border-radius: 15px;
-            margin: 5px;
-            max-width: 70%;
+            max-width: 55%; /* 控制消息气泡最大宽度 */
             word-wrap: break-word;
-            position: relative;
-        }
-
-        .my-message {
-            background-color: #007AFF; /* Blue */
-            color: white;
-            margin-left: auto;
-            margin-right: 0;
-        }
-
-        .their-message {
-            background-color: #E5E5EA; /* Light gray */
-            color: black;
         }
 
         .message-container {
-            display: flex;
-            align-items: flex-start;
+            display: flex; /* 使用 flexbox 布局 */
+            align-items: flex-start; /* 垂直对齐头像和消息气泡 */
             margin-bottom: 10px;
+        }
+
+        .my-message-container {
+            justify-content: flex-end; /* 自己的消息右对齐 */
+        }
+
+        .their-message-container {
+            justify-content: flex-start; /* 其他用户的消息左对齐 */
         }
 
         .avatar {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            margin-right: 10px;
+            margin-right: 10px; /* 头像与消息气泡之间的右边距 */
+        }
+
+        .my-message {
+            background-color: #007AFF; /* 蓝色 */
+            color: white;
+        }
+
+        .their-message {
+            background-color: #E5E5EA; /* 淡灰色 */
+            color: black;
         }
 
         .username {
             font-weight: bold;
-            color: #333; /* Dark gray */
+            color: #333; /* 深灰色 */
         }
 
         #in {
             border-radius: 20px;
         }
+
+        @media (max-width: 640px) {
+            .chat-bubble {
+                max-width: 55%; /* 移动端最大宽度 */
+            }
+        }
     </style>
 </head>
 
 <body class="bg-gray-900 text-white font-mono h-screen flex flex-col justify-between">
-<div class="max-w-lg mx-auto p-4 overflow-auto h-full">
-    <div id="out" class="space-y-2 mb-4"></div>
-</div>
-<div class="p-4">
-    <input id="in" placeholder="回车发送" class="w-full p-2 bg-gray-800 border border-gray-700 rounded">
+<div class="chat-container">
+    <div class="scrollable p-4" id="scrollable">
+        <div id="out" class="space-y-2 mb-4"></div>
+    </div>
+    <div class="p-4">
+        <input id="in" placeholder="回车发送" class="w-full p-2 bg-gray-800 border border-gray-700 rounded">
+    </div>
 </div>
 
 <script>
     let lastMessageTime = null;
-    const defaultAvatar = "https://api.7trees.cn/avatar"; // 默认头像的路径
+    const defaultAvatar = "https://api.7trees.cn/avatar";
+
+    function easeOutQuad(t) {
+        return t * (2 - t); // 二次贝塞尔曲线缓动函数
+    }
+
+    function smoothScrollToBottom(element) {
+        const targetScrollTop = element.scrollHeight; // 滚动条目标位置
+        const duration = 400; // 动画持续时间
+        const startScrollTop = element.scrollTop; // 当前滚动位置
+        const distance = targetScrollTop - startScrollTop; // 滚动距离
+        let startTime = null; // 开始时间
+
+        function animation(currentTime) {
+            if (!startTime) startTime = currentTime; // 初始化开始时间
+            const timeElapsed = currentTime - startTime; // 已过时间
+            const t = Math.min(timeElapsed / duration, 1); // 进度控制
+            const ease = easeOutQuad(t); // 应用缓动计算
+            element.scrollTop = startScrollTop + distance * ease; // 更新滚动位置
+
+            if (t < 1) requestAnimationFrame(animation); // 继续动画
+        }
+
+        requestAnimationFrame(animation); // 启动动画
+
+    }
 
     function sse() {
         var source = new EventSource('/stream');
         var out = document.getElementById('out');
+        var scrollable = document.getElementById('scrollable');
+
         source.onmessage = function (e) {
             if (e.data == 1) {
-                return;
+                return; // 忽略心跳消息
             }
             addMessage(e.data); // 直接传递完整消息（包括用户名）
+
+            // 在添加新消息后，检查是否需要滚动
+            setTimeout(() => {
+                smoothScrollToBottom(scrollable); // 自动滚动到底部
+            }, 200); // 调整延迟时间
         };
     }
 
@@ -107,14 +184,15 @@
 
             let messageHTML = '';
 
+            // 根据用户名构建消息容器
             if (username === '{{ user }}') { // 如果用户名是自己
                 messageHTML = `
-                    <div class="message-container">
-                        <img src="${defaultAvatar}?${username}" alt="Avatar" class="avatar">
+                    <div class="message-container my-message-container">
                         <div>
-                        <div class="username">${username}（我）</div>
-                        <div class="chat-bubble my-message">${userMessage}</div>
+                            <div class="username">${username}（我）</div>
+                            <div class="chat-bubble my-message">${userMessage}</div>
                         </div>
+                        <img src="${defaultAvatar}?${username}" alt="Avatar" class="avatar">
                     </div>`;
             } else {
                 messageHTML = `
@@ -146,8 +224,7 @@
             }
         }
     });
-
-    sse();
+    sse(); // 启动服务器发送事件
 </script>
 </body>
 
