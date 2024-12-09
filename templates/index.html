@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Room</title>
     <script src="http://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.min.js"></script>
+    <!-- 引入 Socket.IO -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         body {
@@ -109,6 +111,15 @@
 <script>
     let lastMessageTime = null;
     const defaultAvatar = "https://api.7trees.cn/avatar";
+    const socket = io(); // 创建 Socket.IO 连接
+
+    socket.on('new_message', function (message) {
+        addMessage(message); // 接收新消息，添加到消息框
+        const scrollable = document.getElementById('scrollable');
+        setTimeout(() => {
+            smoothScrollToBottom(scrollable); // 自动滚动到底部
+        }, 200); // 调整延迟时间
+    });
 
     function easeOutQuad(t) {
         return t * (2 - t); // 二次贝塞尔曲线缓动函数
@@ -132,25 +143,6 @@
         }
 
         requestAnimationFrame(animation); // 启动动画
-
-    }
-
-    function sse() {
-        var source = new EventSource('/stream');
-        var out = document.getElementById('out');
-        var scrollable = document.getElementById('scrollable');
-
-        source.onmessage = function (e) {
-            if (e.data == 1) {
-                return; // 忽略心跳消息
-            }
-            addMessage(e.data); // 直接传递完整消息（包括用户名）
-
-            // 在添加新消息后，检查是否需要滚动
-            setTimeout(() => {
-                smoothScrollToBottom(scrollable); // 自动滚动到底部
-            }, 200); // 调整延迟时间
-        };
     }
 
     function addMessage(message) {
@@ -218,13 +210,12 @@
         if (e.keyCode == 13) {
             var message = $(this).val();
             if (message) {
-                $.post('/send', {'message': message});
-                addMessage(message);
+                socket.emit('send_message', message); // 使用 Socket.IO 发送消息
+                addMessage(`{{ user }}: ${message}`); // 临时添加消息以保持视觉一致性
                 $(this).val('');
             }
         }
     });
-    sse(); // 启动服务器发送事件
 </script>
 </body>
 
