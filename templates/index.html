@@ -57,11 +57,11 @@
         }
 
         .my-message-container {
-            justify-content: flex-end; /* 自己的消息右对齐 */
+            flex-direction: row-reverse; /* 自己的消息反向排列，头像在右，消息在左 */
         }
 
         .their-message-container {
-            justify-content: flex-start; /* 其他用户的消息左对齐 */
+            flex-direction: row; /* 其他用户的消息正常排列，头像在左，消息在右 */
         }
 
         .avatar {
@@ -74,11 +74,13 @@
         .my-message {
             background-color: #007AFF; /* 蓝色 */
             color: white;
+            margin-right: 10px; /* 确保消息气泡和头像之间有间距 */
         }
 
         .their-message {
             background-color: #E5E5EA; /* 淡灰色 */
             color: black;
+            margin-left: 10px; /* 确保消息气泡和头像之间有间距 */
         }
 
         .username {
@@ -101,7 +103,9 @@
 <body class="bg-gray-900 text-white font-mono h-screen flex flex-col justify-between">
 <div class="chat-container">
     <div class="scrollable p-4" id="scrollable">
-        <div id="out" class="space-y-2 mb-4"></div>
+        <div id="out" class="space-y-2 mb-4">
+            <!-- 消息会动态添加在这里 -->
+        </div>
     </div>
     <div class="p-4">
         <input id="in" placeholder="回车发送" class="w-full p-2 bg-gray-800 border border-gray-700 rounded">
@@ -179,22 +183,22 @@
             // 根据用户名构建消息容器
             if (username === '{{ user }}') { // 如果用户名是自己
                 messageHTML = `
-                    <div class="message-container my-message-container">
-                        <div>
-                            <div class="username">${username}（我）</div>
-                            <div class="chat-bubble my-message">${userMessage}</div>
-                        </div>
-                        <img src="${defaultAvatar}?${username}" alt="Avatar" class="avatar">
-                    </div>`;
+                <div class="message-container my-message-container">
+                    <img src="${defaultAvatar}?${username}" alt="Avatar" class="avatar">
+                    <div class="chat-bubble my-message">
+                        <div class="username">${username}（我）</div>
+                        ${userMessage}
+                    </div>
+                </div>`;
             } else {
                 messageHTML = `
-                    <div class="message-container">
-                        <img src="${defaultAvatar}?${username}" alt="Avatar" class="avatar">
-                        <div>
-                            <div class="username">${username}</div>
-                            <div class="chat-bubble their-message">${userMessage}</div>
-                        </div>
-                    </div>`;
+                <div class="message-container their-message-container">
+                    <img src="${defaultAvatar}?${username}" alt="Avatar" class="avatar">
+                    <div class="chat-bubble their-message">
+                        <div class="username">${username}</div>
+                        ${userMessage}
+                    </div>
+                </div>`;
             }
 
             out.innerHTML += messageHTML; // 将新消息插入到底部
@@ -211,7 +215,7 @@
             var message = $(this).val();
             if (message) {
                 socket.emit('send_message', message); // 使用 Socket.IO 发送消息
-                addMessage(`{{ user }}: ${message}`); // 临时添加消息以保持视觉一致性
+                addMessage(`yue: ${message}`); // 临时添加消息以保持视觉一致性
                 $(this).val('');
             }
         }
