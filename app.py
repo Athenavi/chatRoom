@@ -9,12 +9,19 @@ import bleach
 import requests
 from dotenv import load_dotenv
 from flask import Flask, render_template, session, redirect, url_for, flash, request
+from flask_caching import Cache
 from flask_socketio import SocketIO
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
+
+# 配置Flask-Caching
+app.config['CACHE_TYPE'] = 'SimpleCache'
+app.config['CACHE_DEFAULT_TIMEOUT'] = 1800  # 默认缓存超时30分钟
+cache = Cache(app)
+
 socketio = SocketIO(app)
 
 # 从环境变量获取配置
@@ -23,6 +30,16 @@ MODEL_NAME = os.getenv('MODEL_NAME')
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
 
 messages_cache = deque(maxlen=9999)
+
+
+@app.before_request
+def update_user_activity():
+    """在每次请求前更新用户活动时间"""
+    if 'user' in session:
+        username = session['user']
+        if cache.get(f'user_{username}'):
+            # 每次活动后重置缓存超时时间
+            cache.set(f'user_{username}', True, timeout=1800)
 
 
 # OpenRouter接口调用函数
@@ -45,14 +62,8 @@ def openrouter_reply(message):
             })
         )
 
-        # 检查响应状态码
         response.raise_for_status()
-
-        # 解析 JSON 响应
-        response_data = response.json()
-
-        # 根据提供的 JSON 格式提取内容
-        return response_data["choices"][0]["message"]["content"]
+        return response.json()["choices"][0]["message"]["content"]
 
     except Exception as e:
         return f"[系统] 模型服务异常：{str(e)}"
@@ -62,8 +73,7 @@ def openrouter_reply(message):
 def index():
     if 'user' not in session:
         return redirect(url_for('login'))
-    user = session['user']
-    return render_template('index.html', user=user)
+    return render_template('index.html', user=session['user'])
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -72,16 +82,26 @@ def login():
         return redirect(url_for('index'))
 
     if request.method == 'POST':
-        if not request.form['user']:
+        username = request.form['user'].strip()
+
+        if not username:
             flash('用户名不能为空')
             return redirect(url_for('login'))
 
-        if request.form['user'] == '🤖AI助手':
+        if username == '🤖AI助手':
             flash('用户名不能为"🤖AI助手"')
             return redirect(url_for('login'))
 
-        session['user'] = request.form['user']
-        add_message(f'用户{session["user"]}加入了房间!')
+        # 检查用户是否已登录
+        if cache.get(f'user_{username}'):
+            flash('该用户已登录，请勿重复登录')
+            return redirect(url_for('login'))
+
+        # 设置session和缓存
+        session['user'] = username
+        cache.set(f'user_{username}', True, timeout=1800)
+
+        add_message(f'用户{username}加入了房间!')
         return redirect(url_for('index'))
 
     return render_template('login.html')
@@ -89,15 +109,15 @@ def login():
 
 @app.route('/logout')
 def logout():
-    user = session.pop('user', None)
-    if user:
-        add_message(f'用户{user}退出了房间')
+    if username := session.get('user'):
+        cache.delete(f'user_{username}')
+        session.pop('user')
+        add_message(f'用户{username}退出了房间')
     return redirect(url_for('login'))
 
 
 def add_message(message):
     messages_cache.append(message)
-    # 通知所有连接的客户端新的消息
     socketio.emit('new_message', message)
 
 
