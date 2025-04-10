@@ -7,7 +7,7 @@
     <title>Chat Room</title>
     <script src="http://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.min.js"></script>
-    <!-- 引入 Socket.IO -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         body {
@@ -92,6 +92,20 @@
             border-radius: 20px;
         }
 
+        #suggestions {
+            position: relative;
+            z-index: 1;
+        }
+
+        .suggestion-item {
+            padding: 5px 10px;
+        }
+
+        .suggestion-item:hover {
+            background-color: #333;
+        }
+
+
         @media (max-width: 640px) {
             .chat-bubble {
                 max-width: 55%; /* 移动端最大宽度 */
@@ -106,6 +120,9 @@
         <div id="out" class="space-y-2 mb-4">
             <!-- 消息会动态添加在这里 -->
         </div>
+    </div>
+    <div id="suggestions" class="p-4 hidden bg-gray-800 border border-gray-700 rounded">
+        <div class="suggestion-item cursor-pointer">🤖AI助手</div>
     </div>
     <div class="p-4">
         <input id="in" placeholder="回车发送" class="w-full p-2 bg-gray-800 border border-gray-700 rounded">
@@ -187,7 +204,16 @@
                     <img src="${defaultAvatar}?${username}" alt="Avatar" class="avatar">
                     <div class="chat-bubble my-message">
                         <div class="username">${username}（我）</div>
-                        ${userMessage}
+                        <div>${marked(userMessage)}</div> <!-- 使用 marked 渲染消息内容 -->
+                    </div>
+                </div>`;
+            } else if (username === '🤖AI助手') { // 如果用户名是 🤖AI助手
+                messageHTML = `
+                <div class="message-container their-message-container">
+                    <img src="${defaultAvatar}?${username}" alt="Avatar" class="avatar">
+                    <div class="chat-bubble their-message">
+                        <div class="username">${username}</div>
+                        <div>${marked.parse(userMessage)}</div> <!-- 使用 marked.parse 渲染消息内容 -->
                     </div>
                 </div>`;
             } else {
@@ -211,14 +237,30 @@
     }
 
     $('#in').keyup(function (e) {
-        if (e.keyCode == 13) {
-            var message = $(this).val();
+        const suggestions = $('#suggestions');
+        const suggestionsItem = suggestions.find('.suggestion-item');
+        const inputValue = $(this).val();
+
+        if (e.keyCode === 13) { // Enter 键
+            const message = inputValue;
             if (message) {
                 socket.emit('send_message', message); // 使用 Socket.IO 发送消息
                 addMessage(`yue: ${message}`); // 临时添加消息以保持视觉一致性
                 $(this).val('');
+                suggestions.hide(); // 隐藏选择栏
             }
+        } else if (inputValue.endsWith('/')) {
+            suggestions.show(); // 显示选择栏
+        } else {
+            suggestions.hide(); // 隐藏选择栏
         }
+
+        // 处理选择栏点击事件
+        suggestionsItem.off('click').on('click', function () {
+            $(this).closest('#suggestions').hide();
+            $('#in').val(inputValue.replace(/\/$/, '@ai '));
+            $('#in').focus();
+        });
     });
 </script>
 </body>
