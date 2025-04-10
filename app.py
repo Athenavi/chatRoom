@@ -10,7 +10,7 @@ import requests
 from dotenv import load_dotenv
 from flask import Flask, render_template, session, redirect, url_for, flash, request
 from flask_caching import Cache
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
 
 load_dotenv()
 
@@ -143,6 +143,18 @@ def handle_send_message(message):
 
     formatted_message = f'[{now.isoformat()}] {user}: {cleaned_message}'
     add_message(formatted_message)
+
+
+@socketio.on('get_history')
+def handle_get_history():
+    if 'user' not in session:
+        return
+
+    # 获取最近50条消息（保留消息顺序）
+    history = list(messages_cache)[-50:] if len(messages_cache) > 50 else list(messages_cache)
+
+    # 发送给请求的客户端
+    emit('history_messages', history)
 
 
 if __name__ == '__main__':

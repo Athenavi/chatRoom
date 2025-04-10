@@ -115,6 +115,7 @@
 </head>
 
 <body class="bg-gray-900 text-white font-mono h-screen flex flex-col justify-between">
+<button onclick="logout()">登出</button>
 <div class="chat-container">
     <div class="scrollable p-4" id="scrollable">
         <div id="out" class="space-y-2 mb-4">
@@ -262,7 +263,39 @@
             $('#in').focus();
         });
     });
+
+    function logout() {
+        // 确认用户是否想要登出
+        if (confirm('确认要登出吗？')) {
+            // 清除本地存储
+            localStorage.removeItem('historyRequested');
+            // 重定向到登出页面
+            window.location.href = '/logout';
+        }
+    }
+
 </script>
+<script>
+    var historyMessagePacket = io();
+
+    // 检查是否已经请求过历史消息
+    if (!localStorage.getItem('historyRequested')) {
+        // 连接成功后请求历史消息
+        historyMessagePacket.on('connect', function () {
+            historyMessagePacket.emit('get_history');
+            // 设置标志，表示历史消息已经请求过
+            localStorage.setItem('historyRequested', 'true');
+        });
+    }
+
+    // 接收历史消息处理
+    historyMessagePacket.on('history_messages', function (messages) {
+        messages.forEach(function (msg) {
+            return addMessage(msg);
+        });
+    });
+</script>
+
 </body>
 
 </html>
