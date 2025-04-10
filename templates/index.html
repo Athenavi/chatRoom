@@ -204,7 +204,7 @@
                     <img src="${defaultAvatar}?${username}" alt="Avatar" class="avatar">
                     <div class="chat-bubble my-message">
                         <div class="username">${username}（我）</div>
-                        <div>${marked(userMessage)}</div> <!-- 使用 marked 渲染消息内容 -->
+                        <div>${userMessage}</div>
                     </div>
                 </div>`;
             } else if (username === '🤖AI助手') { // 如果用户名是 🤖AI助手
