@@ -10,6 +10,7 @@ import requests
 from dotenv import load_dotenv
 from flask import Flask, render_template, session, redirect, url_for, flash, request
 from flask_caching import Cache
+from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
 load_dotenv()
@@ -22,7 +23,10 @@ app.config['CACHE_TYPE'] = 'SimpleCache'
 app.config['CACHE_DEFAULT_TIMEOUT'] = 1800  # 默认缓存超时30分钟
 cache = Cache(app)
 
-socketio = SocketIO(app)
+# 配置CORS
+cors = CORS(app, origins=[os.getenv('DOMAIN')])
+
+socketio = SocketIO(app, cors_allowed_origins=[os.getenv('DOMAIN')])
 
 # 从环境变量获取配置
 OPENROUTER_API_URL = os.getenv('OPENROUTER_API_URL')
