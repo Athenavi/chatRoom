@@ -49,6 +49,7 @@
             max-width: 55%; /* 控制消息气泡最大宽度 */
             word-wrap: break-word;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); /* 添加阴影 */
+            position: relative; /* 使伪元素定位相对于气泡 */
         }
 
 
@@ -71,6 +72,7 @@
             height: 40px;
             border-radius: 50%;
             margin-right: 10px; /* 头像与消息气泡之间的右边距 */
+            margin-left: 10px; /* 头像与消息气泡之间的右边距 */
             border: 2px solid #ffffff; /* 添加头像边框 */
         }
 
@@ -88,11 +90,41 @@
             border: 1px solid #ccc; /* 添加边框 */
         }
 
+        .my-message::after {
+            content: '';
+            position: absolute;
+            top: 10px; /* 根据需要调整 */
+            left: 100%; /* 在气泡的右边 */
+            border-width: 10px; /* 三角形的大小 */
+            border-style: solid;
+            border-color: transparent transparent transparent #007AFF; /* 颜色匹配气泡背景 */
+        }
+
+        .their-message::after {
+            content: '';
+            position: absolute;
+            top: 10px; /* 根据需要调整 */
+            right: 100%; /* 在气泡的左边 */
+            border-width: 10px; /* 三角形的大小 */
+            border-style: solid;
+            border-color: transparent #E5E5EA transparent transparent; /* 颜色匹配气泡背景 */
+        }
+
 
         .username {
             font-weight: bold;
             color: #333; /* 深灰色 */
+            font-size: 16px; /* 字体大小 */
+            line-height: 1.5; /* 行高 */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1); /* 文本阴影 */
+            transition: color 0.3s ease; /* 过渡效果 */
         }
+
+        .username:hover {
+            color: #007AFF; /* 悬停时的颜色，匹配气泡背景 */
+            text-decoration: underline; /* 悬停时的下划线 */
+        }
+
 
         #in {
             border-radius: 20px;
