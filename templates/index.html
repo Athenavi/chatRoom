@@ -44,11 +44,13 @@
 
         .chat-bubble {
             display: inline-block;
-            padding: 10px 15px;
-            border-radius: 15px;
+            padding: 12px 18px; /* 增加内边距 */
+            border-radius: 12px; /* 修改圆角 */
             max-width: 55%; /* 控制消息气泡最大宽度 */
             word-wrap: break-word;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); /* 添加阴影 */
         }
+
 
         .message-container {
             display: flex; /* 使用 flexbox 布局 */
@@ -69,19 +71,23 @@
             height: 40px;
             border-radius: 50%;
             margin-right: 10px; /* 头像与消息气泡之间的右边距 */
+            border: 2px solid #ffffff; /* 添加头像边框 */
         }
 
         .my-message {
             background-color: #007AFF; /* 蓝色 */
             color: white;
             margin-right: 10px; /* 确保消息气泡和头像之间有间距 */
+            border: 1px solid #0056b3; /* 添加边框 */
         }
 
         .their-message {
             background-color: #E5E5EA; /* 淡灰色 */
             color: black;
             margin-left: 10px; /* 确保消息气泡和头像之间有间距 */
+            border: 1px solid #ccc; /* 添加边框 */
         }
+
 
         .username {
             font-weight: bold;
