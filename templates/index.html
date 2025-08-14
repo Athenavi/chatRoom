@@ -1,159 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Room</title>
-    <script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <style>
-        body {
-            scrollbar-width: thin; /* Firefox */
-            scrollbar-color: #4B5563 transparent; /* Firefox */
-        }
+{% block title %}FastAPI 聊天室{% endblock %}
 
-        /* Webkit browsers */
-        ::-webkit-scrollbar {
-            width: 8px; /* 滚动条宽度 */
-        }
+{% block content %}
+<div class="flex justify-between items-center p-4">
+    <h2 class="text-xl font-bold">FastAPI 聊天室</h2>
+    <div class="flex items-center space-x-2">
+        <span class="bg-green-500 text-white px-2 py-1 rounded text-sm" id="userBadge"></span>
+        <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">登出</button>
+    </div>
+</div>
 
-        ::-webkit-scrollbar-thumb {
-            background-color: #4B5563; /* 滚动条颜色 */
-            border-radius: 10px; /* 圆角 */
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent; /* 滚动条背景 */
-        }
-
-        .chat-container {
-            max-width: 600px; /* 固定聊天区域宽度 */
-            width: 100%; /* 确保其在小屏幕上自适应 */
-            margin: 0 auto; /* 居中对齐 */
-        }
-
-        .scrollable {
-            max-height: 85vh; /* 限制聊天区域高度，以适应不同屏幕 */
-            overflow-y: auto; /* 允许垂直滚动 */
-            border: 1px solid #4B5563; /* 添加边框 */
-            border-radius: 8px; /* 圆角 */
-        }
-
-        .chat-bubble {
-            display: inline-block;
-            padding: 12px 18px; /* 增加内边距 */
-            border-radius: 12px; /* 修改圆角 */
-            max-width: 55%; /* 控制消息气泡最大宽度 */
-            word-wrap: break-word;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); /* 添加阴影 */
-            position: relative; /* 使伪元素定位相对于气泡 */
-        }
-
-
-        .message-container {
-            display: flex; /* 使用 flexbox 布局 */
-            align-items: flex-start; /* 垂直对齐头像和消息气泡 */
-            margin-bottom: 10px;
-        }
-
-        .my-message-container {
-            flex-direction: row-reverse; /* 自己的消息反向排列，头像在右，消息在左 */
-        }
-
-        .their-message-container {
-            flex-direction: row; /* 其他用户的消息正常排列，头像在左，消息在右 */
-        }
-
-        .avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            margin-right: 10px; /* 头像与消息气泡之间的右边距 */
-            margin-left: 10px; /* 头像与消息气泡之间的右边距 */
-            border: 2px solid #ffffff; /* 添加头像边框 */
-        }
-
-        .my-message {
-            background-color: #007AFF; /* 蓝色 */
-            color: white;
-            margin-right: 10px; /* 确保消息气泡和头像之间有间距 */
-            border: 1px solid #0056b3; /* 添加边框 */
-        }
-
-        .their-message {
-            background-color: #E5E5EA; /* 淡灰色 */
-            color: black;
-            margin-left: 10px; /* 确保消息气泡和头像之间有间距 */
-            border: 1px solid #ccc; /* 添加边框 */
-        }
-
-        .my-message::after {
-            content: '';
-            position: absolute;
-            top: 10px; /* 根据需要调整 */
-            left: 100%; /* 在气泡的右边 */
-            border-width: 10px; /* 三角形的大小 */
-            border-style: solid;
-            border-color: transparent transparent transparent #007AFF; /* 颜色匹配气泡背景 */
-        }
-
-        .their-message::after {
-            content: '';
-            position: absolute;
-            top: 10px; /* 根据需要调整 */
-            right: 100%; /* 在气泡的左边 */
-            border-width: 10px; /* 三角形的大小 */
-            border-style: solid;
-            border-color: transparent #E5E5EA transparent transparent; /* 颜色匹配气泡背景 */
-        }
-
-
-        .username {
-            font-weight: bold;
-            color: #333; /* 深灰色 */
-            font-size: 16px; /* 字体大小 */
-            line-height: 1.5; /* 行高 */
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1); /* 文本阴影 */
-            transition: color 0.3s ease; /* 过渡效果 */
-        }
-
-        .username:hover {
-            color: #FFD94C; /* 悬停时的颜色，匹配气泡背景 */
-            text-decoration: none;
-        }
-
-
-        #in {
-            border-radius: 20px;
-        }
-
-        #suggestions {
-            position: relative;
-            z-index: 1;
-        }
-
-        .suggestion-item {
-            padding: 5px 10px;
-        }
-
-        .suggestion-item:hover {
-            background-color: #333;
-        }
-
-
-        @media (max-width: 640px) {
-            .chat-bubble {
-                max-width: 55%; /* 移动端最大宽度 */
-            }
-        }
-    </style>
-</head>
-
-<body class="bg-gray-900 text-white font-mono h-screen flex flex-col justify-between">
-<button onclick="logout()">登出</button>
 <div class="chat-container">
     <div class="scrollable p-4" id="scrollable">
         <div id="out" class="space-y-2 mb-4">
@@ -164,176 +21,224 @@
         <div class="suggestion-item cursor-pointer">🤖AI助手</div>
     </div>
     <div class="p-4">
-        <input id="in" placeholder="回车发送" class="w-full p-2 bg-gray-800 border border-gray-700 rounded">
+        <input id="messageInput" placeholder="回车发送 (使用 @ai 开头可以与AI对话)" class="w-full p-2 bg-gray-800 border border-gray-700 rounded">
     </div>
 </div>
 
+<div id="connectionStatus" class="fixed bottom-4 right-4">
+    <span class="bg-gray-600 text-white px-2 py-1 rounded text-sm">连接中...</span>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-    let lastMessageTime = null;
-    const defaultAvatar = "https://api.7trees.cn/avatar";
-    const socket = io(); // 创建 Socket.IO 连接
+let ws = null;
+let token = localStorage.getItem('token');
+let username = localStorage.getItem('username');
+let lastMessageTime = null;
+const defaultAvatar = "https://api.7trees.cn/avatar";
 
-    socket.on('new_message', function (message) {
-        addMessage(message); // 接收新消息，添加到消息框
-        const scrollable = document.getElementById('scrollable');
-        setTimeout(() => {
-            smoothScrollToBottom(scrollable); // 自动滚动到底部
-        }, 200); // 调整延迟时间
-    });
+// 检查登录状态
+if (!token || !username) {
+    window.location.href = '/login';
+}
 
-    function easeOutQuad(t) {
-        return t * (2 - t); // 二次贝塞尔曲线缓动函数
+document.getElementById('userBadge').textContent = username;
+
+function easeOutQuad(t) {
+    return t * (2 - t);
+}
+
+function smoothScrollToBottom(element) {
+    const targetScrollTop = element.scrollHeight;
+    const duration = 400;
+    const startScrollTop = element.scrollTop;
+    const distance = targetScrollTop - startScrollTop;
+    let startTime = null;
+
+    function animation(currentTime) {
+        if (!startTime) startTime = currentTime;
+        const timeElapsed = currentTime - startTime;
+        const t = Math.min(timeElapsed / duration, 1);
+        const ease = easeOutQuad(t);
+        element.scrollTop = startScrollTop + distance * ease;
+
+        if (t < 1) requestAnimationFrame(animation);
     }
 
-    function smoothScrollToBottom(element) {
-        const targetScrollTop = element.scrollHeight; // 滚动条目标位置
-        const duration = 400; // 动画持续时间
-        const startScrollTop = element.scrollTop; // 当前滚动位置
-        const distance = targetScrollTop - startScrollTop; // 滚动距离
-        let startTime = null; // 开始时间
+    requestAnimationFrame(animation);
+}
 
-        function animation(currentTime) {
-            if (!startTime) startTime = currentTime; // 初始化开始时间
-            const timeElapsed = currentTime - startTime; // 已过时间
-            const t = Math.min(timeElapsed / duration, 1); // 进度控制
-            const ease = easeOutQuad(t); // 应用缓动计算
-            element.scrollTop = startScrollTop + distance * ease; // 更新滚动位置
-
-            if (t < 1) requestAnimationFrame(animation); // 继续动画
+// 建立WebSocket连接
+function connectWebSocket() {
+    ws = new WebSocket(`ws://localhost:8000/ws/${token}`);
+    
+    ws.onopen = function(event) {
+        console.log('WebSocket连接已建立');
+        document.getElementById('connectionStatus').innerHTML = '<span class="bg-green-500 text-white px-2 py-1 rounded text-sm">已连接</span>';
+        
+        // 请求历史消息
+        ws.send(JSON.stringify({
+            type: 'get_history'
+        }));
+    };
+    
+    ws.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'new_message') {
+            addMessage(data.message);
+            const scrollable = document.getElementById('scrollable');
+            setTimeout(() => {
+                smoothScrollToBottom(scrollable);
+            }, 200);
+        } else if (data.type === 'history_messages') {
+            const out = document.getElementById('out');
+            out.innerHTML = '';
+            data.messages.forEach(message => {
+                addMessage(message);
+            });
         }
+    };
+    
+    ws.onclose = function(event) {
+        console.log('WebSocket连接已关闭');
+        document.getElementById('connectionStatus').innerHTML = '<span class="bg-red-500 text-white px-2 py-1 rounded text-sm">连接断开</span>';
+        
+        // 尝试重连
+        setTimeout(connectWebSocket, 3000);
+    };
+    
+    ws.onerror = function(error) {
+        console.error('WebSocket错误:', error);
+        document.getElementById('connectionStatus').innerHTML = '<span class="bg-yellow-500 text-white px-2 py-1 rounded text-sm">连接错误</span>';
+    };
+}
 
-        requestAnimationFrame(animation); // 启动动画
+function addMessage(message) {
+    var out = document.getElementById('out');
+    let currentTime = new Date();
+
+    // 当前时间是否与上条消息间隔超过1分钟
+    if (lastMessageTime && (currentTime - lastMessageTime) > 60000) {
+        var timeSeparator = `<div class="text-center text-gray-500 my-2">--- ${formatDate(currentTime)} ---</div>`;
+        out.innerHTML += timeSeparator;
     }
 
-    function addMessage(message) {
-        var out = document.getElementById('out');
-        let currentTime = new Date();
-
-        // 当前时间是否与上条消息间隔超过1分钟
-        if (lastMessageTime && (currentTime - lastMessageTime) > 60000) {
-            var timeSeparator = `<div class="text-center text-gray-500 my-2">--- ${formatDate(currentTime)} ---</div>`;
-            out.innerHTML += timeSeparator; // 将分隔时间插入到容器底部
-        }
-
-        function indexOfThirdColon(message) {
-            let index = -1;
-            for (let i = 0; i < 3; i++) {
-                index = message.indexOf(':', index + 1);
-                if (index === -1) {
-                    return -1; // 如果未找到第三个冒号，则返回 -1
-                }
+    function indexOfThirdColon(message) {
+        let index = -1;
+        for (let i = 0; i < 3; i++) {
+            index = message.indexOf(':', index + 1);
+            if (index === -1) {
+                return -1;
             }
-            return index; // 返回第三个冒号的位置
         }
-
-        const thirdColonIndex = indexOfThirdColon(message);
-
-        // 从消息中提取用户名和内容
-        const indexOfColon = thirdColonIndex;
-        if (indexOfColon >= 0) {
-            const username = message.substring(11, indexOfColon).trim(); // 提取用户名
-            const userMessage = message.substring(indexOfColon + 1).trim(); // 提取消息内容
-
-            let messageHTML = '';
-
-            // 根据用户名构建消息容器
-            if (username === '{{ user }}') { // 如果用户名是自己
-                messageHTML = `
-                <div class="message-container my-message-container">
-                    <img src="${defaultAvatar}?${username}" alt="Avatar" class="avatar">
-                    <div class="chat-bubble my-message">
-                        <div class="username">${username}（我）</div>
-                        <div>${userMessage}</div>
-                    </div>
-                </div>`;
-            } else if (username === '🤖AI助手') { // 如果用户名是 🤖AI助手
-                messageHTML = `
-                <div class="message-container their-message-container">
-                    <img src="${defaultAvatar}?${username}" alt="Avatar" class="avatar">
-                    <div class="chat-bubble their-message">
-                        <div class="username">${username}</div>
-                        <div>${marked.parse(userMessage)}</div> <!-- 使用 marked.parse 渲染消息内容 -->
-                    </div>
-                </div>`;
-            } else {
-                messageHTML = `
-                <div class="message-container their-message-container">
-                    <img src="${defaultAvatar}?${username}" alt="Avatar" class="avatar">
-                    <div class="chat-bubble their-message">
-                        <div class="username">${username}</div>
-                        ${userMessage}
-                    </div>
-                </div>`;
-            }
-
-            out.innerHTML += messageHTML; // 将新消息插入到底部
-            lastMessageTime = currentTime;  // 更新最后消息时间
-        }
+        return index;
     }
 
-    function formatDate(date) {
-        return `${date.getHours()}:${date.getMinutes() < 10 ? '0' : ''}${date.getMinutes()}`;
-    }
+    const thirdColonIndex = indexOfThirdColon(message);
+    const indexOfColon = thirdColonIndex;
+    
+    if (indexOfColon >= 0) {
+        const extractedUsername = message.substring(11, indexOfColon).trim();
+        const userMessage = message.substring(indexOfColon + 1).trim();
 
-    $('#in').keyup(function (e) {
-        const suggestions = $('#suggestions');
-        const suggestionsItem = suggestions.find('.suggestion-item');
-        const inputValue = $(this).val();
+        let messageHTML = '';
 
-        if (e.keyCode === 13) { // Enter 键
-            const message = inputValue;
-            if (message) {
-                socket.emit('send_message', message); // 使用 Socket.IO 发送消息
-                addMessage(`yue: ${message}`); // 临时添加消息以保持视觉一致性
-                $(this).val('');
-                suggestions.hide(); // 隐藏选择栏
-            }
-        } else if (inputValue.endsWith('/')) {
-            suggestions.show(); // 显示选择栏
+        if (extractedUsername === username) {
+            messageHTML = `
+            <div class="message-container my-message-container">
+                <img src="${defaultAvatar}?${extractedUsername}" alt="Avatar" class="avatar">
+                <div class="chat-bubble my-message">
+                    <div class="username">${extractedUsername}（我）</div>
+                    <div>${userMessage}</div>
+                </div>
+            </div>`;
+        } else if (extractedUsername === '🤖AI助手') {
+            messageHTML = `
+            <div class="message-container their-message-container">
+                <img src="${defaultAvatar}?${extractedUsername}" alt="Avatar" class="avatar">
+                <div class="chat-bubble their-message">
+                    <div class="username">${extractedUsername}</div>
+                    <div>${marked.parse(userMessage)}</div>
+                </div>
+            </div>`;
         } else {
-            suggestions.hide(); // 隐藏选择栏
+            messageHTML = `
+            <div class="message-container their-message-container">
+                <img src="${defaultAvatar}?${extractedUsername}" alt="Avatar" class="avatar">
+                <div class="chat-bubble their-message">
+                    <div class="username">${extractedUsername}</div>
+                    <div>${userMessage}</div>
+                </div>
+            </div>`;
         }
 
-        // 处理选择栏点击事件
-        suggestionsItem.off('click').on('click', function () {
-            $(this).closest('#suggestions').hide();
-            $('#in').val(inputValue.replace(/\/$/, '@ai '));
-            $('#in').focus();
-        });
-    });
+        out.innerHTML += messageHTML;
+        lastMessageTime = currentTime;
+    }
+}
 
-    function logout() {
-        // 确认用户是否想要登出
-        if (confirm('确认要登出吗？')) {
-            // 清除本地存储
-            localStorage.removeItem('historyRequested');
-            // 重定向到登出页面
-            window.location.href = '/logout';
+function formatDate(date) {
+    return `${date.getHours()}:${date.getMinutes() < 10 ? '0' : ''}${date.getMinutes()}`;
+}
+
+$('#messageInput').keyup(function (e) {
+    const suggestions = $('#suggestions');
+    const suggestionsItem = suggestions.find('.suggestion-item');
+    const inputValue = $(this).val();
+
+    if (e.keyCode === 13) { // Enter 键
+        const message = inputValue;
+        if (message && ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+                type: 'send_message',
+                message: message
+            }));
+            $(this).val('');
+            suggestions.hide();
         }
+    } else if (inputValue.endsWith('/')) {
+        suggestions.show();
+    } else {
+        suggestions.hide();
     }
 
-</script>
-<script>
-    var historyMessagePacket = io();
-
-    // 检查是否已经请求过历史消息
-    if (!localStorage.getItem('historyRequested')) {
-        // 连接成功后请求历史消息
-        historyMessagePacket.on('connect', function () {
-            historyMessagePacket.emit('get_history');
-            // 设置标志，表示历史消息已经请求过
-            localStorage.setItem('historyRequested', 'true');
-        });
-    }
-
-    // 接收历史消息处理
-    historyMessagePacket.on('history_messages', function (messages) {
-        messages.forEach(function (msg) {
-            return addMessage(msg);
-        });
+    // 处理选择栏点击事件
+    suggestionsItem.off('click').on('click', function () {
+        $(this).closest('#suggestions').hide();
+        $('#messageInput').val(inputValue.replace(/\/$/, '@ai '));
+        $('#messageInput').focus();
     });
+});
+
+// 退出登录
+async function logout() {
+    if (confirm('确认要登出吗？')) {
+        try {
+            await fetch('/api/logout', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+        } catch (error) {
+            console.error('退出登录失败:', error);
+        }
+        
+        localStorage.removeItem('token');
+        localStorage.removeItem('username');
+        localStorage.removeItem('historyRequested');
+        
+        if (ws) {
+            ws.close();
+        }
+        
+        window.location.href = '/login';
+    }
+}
+
+// 初始化WebSocket连接
+connectWebSocket();
 </script>
-
-</body>
-
-</html>
+{% endblock %}
