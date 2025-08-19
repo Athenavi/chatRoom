@@ -5,6 +5,7 @@ import os
 import pickle
 import secrets
 from collections import deque
+from html import escape
 from threading import Lock
 from typing import List, Optional
 
@@ -278,7 +279,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             message_data = json.loads(data)
 
             if message_data["type"] == "send_message":
-                message = message_data["message"]
+                message = escape(message_data["message"])
                 now = datetime.datetime.now().replace(microsecond=0).time()
                 cleaned_message = bleach.clean(message)
 
