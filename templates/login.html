@@ -46,13 +46,15 @@
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const formData = new FormData();
-    formData.append('username', document.getElementById('username').value);
-    
+    const username = document.getElementById('username').value;
+
     try {
         const response = await fetch('/api/login', {
             method: 'POST',
-            body: formData
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username: username })
         });
         
         const data = await response.json();
