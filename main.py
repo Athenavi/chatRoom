@@ -381,12 +381,16 @@ async def openrouter_reply(message: str) -> str:
 async def add_message(username: str, message: str, message_type: str = 'user'):
     """添加消息到数据库并通过WebSocket通知所有客户端"""
     try:
-        # 写入数据库
-        await db_router.write_operation(
-            """INSERT INTO chat_messages (username, message, message_type)
-               VALUES ($1, $2, $3)""",
-            username, message, message_type
-        )
+        # 检查消息是否为 '🤖AI助手: 正在思考中...'
+        if message == '🤖AI助手: 正在思考中...':
+            logger.info("跳过数据库记录: AI正在思考中")
+        else:
+            # 写入数据库
+            await db_router.write_operation(
+                """INSERT INTO chat_messages (username, message, message_type)
+                   VALUES ($1, $2, $3)""",
+                username, message, message_type
+            )
 
         # 更新缓存
         now = datetime.datetime.now().replace(microsecond=0).time()
@@ -416,8 +420,7 @@ async def async_ai_task(username: str, message: str):
     question = message.replace("@ai", "", 1).strip()
 
     # 先发送一个等待提示
-    now = datetime.datetime.now().replace(microsecond=0).time()
-    thinking_message = f'[{now.isoformat()}] 🤖AI助手: 正在思考中...'
+    thinking_message = f'🤖AI助手: 正在思考中...'
     await add_message("🤖AI助手", thinking_message, "ai")
 
     # 获取AI回复
